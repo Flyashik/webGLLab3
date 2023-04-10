@@ -79,9 +79,6 @@ function initShaderProgram(gl, vsSource, fsSource) {
 	return shaderProgram;
 }
 
-
-// ============== Cube =============
-
 let canvas = document.getElementById("cubeCanvas");
 initWebGL(canvas)
 if (gl)
@@ -89,7 +86,7 @@ if (gl)
 	// Устанавливаем размер вьюпорта
 	gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 	// установить в качестве цвета очистки буфера цвета черный, полная непрозрачность
-	gl.clearColor(0.0, 0.0, 0.0, 1.0);
+	gl.clearColor(0.0, 0.3, 0.6, 1.0);
 	// включает использование буфера глубины
 	gl.enable(gl.DEPTH_TEST);
 	// определяет работу буфера глубины: более ближние объекты перекрывают дальние
@@ -175,14 +172,11 @@ gl.vertexAttribPointer(vertColorAttribute, 3, gl.FLOAT, false, 6*Float32Array.BY
 gl.enableVertexAttribArray(vertexPositionAttribute);
 gl.enableVertexAttribArray(vertColorAttribute);
 
-let identityMatrix = glMatrix.mat4.identity(new Float32Array(16));
-
 let goldCubeTop = new Float32Array(16);
 let goldCubeBot = new Float32Array(16);
 let silverCubeLeft = new Float32Array(16);
 let bronzeCubeRight = new Float32Array(16);
 
-const norm = 1;
 const startPosX = 0.5;
 const startPosY = -1;
 const startPosZ = -1;
@@ -190,36 +184,32 @@ const startPosZ = -1;
 let worldMatrix = new Float32Array(16);
 let viewMatrix = new Float32Array(16);
 let projMatrix = new Float32Array(16);
-let uColorsCube = [0.0, 0.0, 0.0]
 
 let matWorldLocationCube = gl.getUniformLocation(shaderProgramCube, "mWorld");
 let matViewLocationCube = gl.getUniformLocation(shaderProgramCube, "mView");
 let matProjLocationCube = gl.getUniformLocation(shaderProgramCube, "mProj");
-let vecColors = gl.getUniformLocation(shaderProgramCube, "uColors");
+let uColors = gl.getUniformLocation(shaderProgramCube, "uColors");
 
 glMatrix.mat4.identity(worldMatrix)
-glMatrix.mat4.lookAt(viewMatrix, [0, 0, -20], [0, 0, 0], [0, 1, 0]);
-glMatrix.mat4.perspective(projMatrix, 0.5, canvas.width / canvas.height, 0.1, 1000.0);
+glMatrix.mat4.lookAt(viewMatrix, [0, 0, -10], [0, 0, 0], [0, 1, 0]);
+glMatrix.mat4.perspective(projMatrix, Math.PI / 7, canvas.width / canvas.height, 0.1, 1000.0);
 
 gl.uniformMatrix4fv(matWorldLocationCube, false, worldMatrix);
 gl.uniformMatrix4fv(matViewLocationCube, false, viewMatrix);
 gl.uniformMatrix4fv(matProjLocationCube, false, projMatrix);
-gl.uniform3fv(vecColors, uColorsCube)
 
-glMatrix.mat4.translate(goldCubeTop, identityMatrix, [startPosX, norm + startPosY, startPosZ]);
+let identityMatrix = glMatrix.mat4.identity(new Float32Array(16));
+
+glMatrix.mat4.translate(goldCubeTop, identityMatrix, [startPosX, startPosY + 1, startPosZ]);
 
 glMatrix.mat4.translate(goldCubeBot, identityMatrix, [startPosX, startPosY, startPosZ]);
 
-glMatrix.mat4.translate(silverCubeLeft, identityMatrix, [norm + startPosX, startPosY, startPosZ]);
+glMatrix.mat4.translate(silverCubeLeft, identityMatrix, [startPosX + 1, startPosY, startPosZ]);
 
-glMatrix.mat4.translate(bronzeCubeRight, identityMatrix, [-norm + startPosX, startPosY, startPosZ]);
-
-let currentAngleX = 0;
-let currentAngleY = 0;
+glMatrix.mat4.translate(bronzeCubeRight, identityMatrix, [startPosX - 1, startPosY, startPosZ]);
 
 let cubes = [goldCubeBot, goldCubeTop, silverCubeLeft, bronzeCubeRight];
 let switcher = 0;
-
 
 document.addEventListener('keyup', (event) => {
 	if(event.code === 'KeyF') {
@@ -227,15 +217,25 @@ document.addEventListener('keyup', (event) => {
 	}
 });
 
+let currentAngleLeftX = 0;
+let currentAngleLeftZ = 0;
+
+let currentAngleRightX = 0;
+let currentAngleRightZ = 0;
+
 document.addEventListener('keydown', (event) => {
 	if(event.code === 'ArrowLeft') {
-		currentAngleX -= 0.05;
-		currentAngleY -= 0.05;
+		currentAngleLeftX = cubes[switcher] === silverCubeLeft ? currentAngleLeftX - 0.05 : currentAngleLeftX;
+		currentAngleLeftZ = cubes[switcher] === silverCubeLeft ? currentAngleLeftZ - 0.05 : currentAngleLeftZ;
+		currentAngleRightX = cubes[switcher] === bronzeCubeRight ? currentAngleRightX - 0.05 : currentAngleRightX;
+		currentAngleRightZ = cubes[switcher] === bronzeCubeRight ? currentAngleRightZ - 0.05 : currentAngleRightZ;
 		glMatrix.mat4.rotate(cubes[switcher], cubes[switcher], -0.05, [0, 1, 0]);
 	}
 	if(event.code === 'ArrowRight') {
-		currentAngleX += 0.05;
-		currentAngleY += 0.05;
+		currentAngleLeftX = cubes[switcher] === silverCubeLeft ? currentAngleLeftX + 0.05 : currentAngleLeftX;
+		currentAngleLeftZ = cubes[switcher] === silverCubeLeft ? currentAngleLeftZ + 0.05 : currentAngleLeftZ;
+		currentAngleRightX = cubes[switcher] === bronzeCubeRight ? currentAngleRightX + 0.05 : currentAngleRightX;
+		currentAngleRightZ = cubes[switcher] === bronzeCubeRight ? currentAngleRightZ + 0.05 : currentAngleRightZ;
 		glMatrix.mat4.rotate(cubes[switcher], cubes[switcher], 0.05, [0, 1, 0]);
 	}
 	if (event.code === 'KeyQ')
@@ -248,27 +248,29 @@ document.addEventListener('keydown', (event) => {
 	}
 	if (event.code === 'KeyA')
 	{
-		currentAngleX -= 0.05;
+		currentAngleLeftX -= 0.05;
+		currentAngleRightX -= 0.05;
 		glMatrix.mat4.rotate(goldCubeTop, goldCubeTop, -0.05, [0, 1, 0]);
 		glMatrix.mat4.rotate(goldCubeBot, goldCubeBot, -0.05, [0, 1, 0]);
 
-		glMatrix.mat4.translate(silverCubeLeft, identityMatrix, [norm * Math.cos(-currentAngleX + currentAngleY) + startPosX, startPosY, norm * Math.sin(-currentAngleX + currentAngleY) + startPosZ]);
-		glMatrix.mat4.rotate(silverCubeLeft, silverCubeLeft, currentAngleX, [0, 1, 0]);
+		glMatrix.mat4.translate(silverCubeLeft, identityMatrix, [Math.cos(-currentAngleLeftX + currentAngleLeftZ) + startPosX, startPosY, Math.sin(-currentAngleLeftX + currentAngleLeftZ) + startPosZ]);
+		glMatrix.mat4.rotate(silverCubeLeft, silverCubeLeft, currentAngleLeftX, [0, 1, 0]);
 
-		glMatrix.mat4.translate(bronzeCubeRight, identityMatrix, [norm * Math.cos(Math.PI - currentAngleX + currentAngleY) + startPosX, startPosY, norm * Math.sin(Math.PI - currentAngleX + currentAngleY) + startPosZ]);
-		glMatrix.mat4.rotate(bronzeCubeRight, bronzeCubeRight, currentAngleX, [0, 1, 0]);
+		glMatrix.mat4.translate(bronzeCubeRight, identityMatrix, [Math.cos(Math.PI - currentAngleRightX + currentAngleRightZ) + startPosX, startPosY, Math.sin(Math.PI - currentAngleRightX + currentAngleRightZ) + startPosZ]);
+		glMatrix.mat4.rotate(bronzeCubeRight, bronzeCubeRight, currentAngleLeftX, [0, 1, 0]);
 	}
 	if (event.code === 'KeyD')
 	{
-		currentAngleX += 0.05;
+		currentAngleLeftX += 0.05;
+		currentAngleRightX += 0.05;
 		glMatrix.mat4.rotate(goldCubeTop, goldCubeTop, 0.05, [0, 1, 0]);
 		glMatrix.mat4.rotate(goldCubeBot, goldCubeBot, 0.05, [0, 1, 0]);
 
-		glMatrix.mat4.translate(silverCubeLeft, identityMatrix, [norm * Math.cos(-currentAngleX + currentAngleY) + startPosX, startPosY, norm * Math.sin(-currentAngleX + currentAngleY) + startPosZ]);
-		glMatrix.mat4.rotate(silverCubeLeft, silverCubeLeft, currentAngleX, [0, 1, 0]);
+		glMatrix.mat4.translate(silverCubeLeft, identityMatrix, [Math.cos(-currentAngleLeftX + currentAngleLeftZ) + startPosX, startPosY, Math.sin(-currentAngleLeftX + currentAngleLeftZ) + startPosZ]);
+		glMatrix.mat4.rotate(silverCubeLeft, silverCubeLeft, currentAngleLeftX, [0, 1, 0]);
 
-		glMatrix.mat4.translate(bronzeCubeRight, identityMatrix, [norm * Math.cos(Math.PI - currentAngleX + currentAngleY) + startPosX, startPosY, norm * Math.sin(Math.PI - currentAngleX + currentAngleY) + startPosZ]);
-		glMatrix.mat4.rotate(bronzeCubeRight, bronzeCubeRight, currentAngleX, [0, 1, 0]);
+		glMatrix.mat4.translate(bronzeCubeRight, identityMatrix, [Math.cos(Math.PI - currentAngleRightX + currentAngleRightZ) + startPosX, startPosY, Math.sin(Math.PI - currentAngleRightX + currentAngleRightZ) + startPosZ]);
+		glMatrix.mat4.rotate(bronzeCubeRight, bronzeCubeRight, currentAngleRightX, [0, 1, 0]);
 	}
 });
 
@@ -278,7 +280,7 @@ let draw = () => {
 
 	gl.uniformMatrix4fv(matViewLocationCube, false, viewMatrix);
 
-	gl.uniform3fv(vecColors, [0.72, 0.52, 0.04]);
+	gl.uniform3fv(uColors, [0.72, 0.52, 0.04]);
 	glMatrix.mat4.copy(worldMatrix, goldCubeTop);
 	gl.uniformMatrix4fv(matWorldLocationCube, false, worldMatrix);
 	gl.drawArrays(gl.TRIANGLES, 0, 40);
@@ -287,12 +289,12 @@ let draw = () => {
 	gl.uniformMatrix4fv(matWorldLocationCube, false, worldMatrix);
 	gl.drawArrays(gl.TRIANGLES, 0, 40);
 
-	gl.uniform3fv(vecColors, [0.75, 0.75, 0.75])
+	gl.uniform3fv(uColors, [0.75, 0.75, 0.75])
 	glMatrix.mat4.copy(worldMatrix, silverCubeLeft);
 	gl.uniformMatrix4fv(matWorldLocationCube, false, worldMatrix);
 	gl.drawArrays(gl.TRIANGLES, 0, 40);
 
-	gl.uniform3fv(vecColors, [0.8, 0.5, 0.2])
+	gl.uniform3fv(uColors, [0.8, 0.5, 0.2])
 	glMatrix.mat4.copy(worldMatrix, bronzeCubeRight);
 	gl.uniformMatrix4fv(matWorldLocationCube, false, worldMatrix);
 	gl.drawArrays(gl.TRIANGLES, 0, 40);
